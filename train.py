@@ -3,29 +3,32 @@ import sys
 import time
 import numpy as np
 import tensorflow as tf
-from plots import loss_plot
+import tensorflow_probability as tfp
+from plots import loss_adam_lbfgs
+from utils import function_factory
+from domain import create_boundaries_data, create_domain_data, create_initial_data
 
-DTYPE = 'float64'
-NUM_THREADS = 4
-MODEL_DIR = 'models'
+# NUM_THREADS = 4
 LOG_OUT = 'i: {:08d}: Total loss = {:2.4e}, PDE loss = {:2.4e}, BC loss = {:2.4e}, IC loss = {:2.4e}'
+MODEL_DIR = 'models'
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # Force CPU
+# If you want to limit the number of threads
 # os.environ["OMP_NUM_THREADS"] = str(NUM_THREADS)
 # os.environ["TF_NUM_INTRAOP_THREADS"] = str(NUM_THREADS)
 # os.environ["TF_NUM_INTEROP_THREADS"] = str(NUM_THREADS)
 # tf.config.threading.set_inter_op_parallelism_threads(
-#     num_threads
+#     NUM_THREADS
 # )
 # tf.config.threading.set_intra_op_parallelism_threads(
-#     num_threads
+#     NUM_THREADS
 # )
 # tf.config.set_soft_device_placement(True)
-tf.keras.backend.set_floatx(DTYPE)
+tf.keras.backend.set_floatx('float64')
 
 # Model name using date and time
 model_name = time.strftime('%Y%m%d%H%M%S')
-load_model_dir = sys.argv[1] if len(sys.argv) > 1 else None
+load_model_dir = sys.argv[1] if len(sys.argv) > 1 else None # Load model from directory
 
 # Temperature initial condition
 T_A = 1
@@ -39,7 +42,6 @@ def init_model(num_hidden_layers=3, num_neurons_per_layer=50, activation='tanh')
     model = tf.keras.Sequential()
     # Input layer
     model.add(tf.keras.Input(3, name='Input')) # x,y,t
-    # model.add(tf.keras.layers.InputLayer(3, name='Input'))
     # Hidden layers
     for i in range(num_hidden_layers):
         model.add(
@@ -53,8 +55,9 @@ def init_model(num_hidden_layers=3, num_neurons_per_layer=50, activation='tanh')
     model.add(tf.keras.layers.Dense(1, name='Output')) # T
     return model
 
+# PDE T_t = alpha * (T_xx + T_yy)
 def PDE(T, Tt, Tx, Ty, Txx, Tyy):
-    return Tt -  - .5 * (Txx + Tyy)
+    return Tt - .5 * (Txx + Tyy)
 
 def get_derivatives(model, X):
     x, y, t = tf.split(X, 3, axis=1)
@@ -125,7 +128,7 @@ def get_grad_loss(model, X, X_0, X_1, X_2, X_3, X_4):
     g = tape.gradient(loss, model.trainable_variables)
     return loss, g, loss_r, loss_m, loss_i
 
-#Actualización de los pesos de model
+# Model's weights update
 @tf.function
 def train_step(model, optimizer, X, X_0, X_1, X_2, X_3, X_4):
     loss, grad_theta, loss_r, loss_m, loss_i = get_grad_loss(model, X, X_0, X_1, X_2, X_3, X_4)
@@ -133,107 +136,96 @@ def train_step(model, optimizer, X, X_0, X_1, X_2, X_3, X_4):
     optimizer.apply_gradients(zip(grad_theta, model.trainable_variables))
     return loss, loss_r, loss_m, loss_i
 
-### Domain
+### Domain ###
 # Nx, Ny, Nt = 128, 128, 1024
 x_min, x_max = -5, 5
 y_min, y_max = -5, 5
 t_min, t_max = 0, 1
-# Parameters
-alpha = 1
+# Number of data points
+N_i, N_b, N_0 = 1024, 512, 512 # Inside the domain, on the boundary and initial condition
 # Data inside the domain
-N_i = 1024
-x_i = tf.random.uniform(shape=(N_i, 1), minval=x_min, maxval=x_max, dtype=DTYPE)
-y_i = tf.random.uniform(shape=(N_i, 1), minval=y_min, maxval=y_max, dtype=DTYPE)
-t_i = tf.random.uniform(shape=(N_i, 1), minval=t_min, maxval=t_max, dtype=DTYPE)
-X_i = tf.concat([x_i, y_i, t_i], axis=1)
+X_i = create_domain_data(N_i, x_min, x_max, y_min, y_max, t_min, t_max)
 # Data on the boundary
-N_b = 512
-# First boundary
-x_1 = tf.random.uniform(shape=(N_b, 1), minval=x_min, maxval=x_max, dtype=DTYPE)
-y_1 = tf.constant(np.full((N_b, 1), y_min), dtype=DTYPE)
-t_1 = tf.random.uniform(shape=(N_b, 1), minval=t_min, maxval=t_max, dtype=DTYPE)
-X_1 = tf.concat([x_1, y_1, t_1], axis=1)
-# Second boundary
-# x_2 = tf.random.uniform(shape=(N_b, 1), minval=x_min, maxval=x_max, dtype=DTYPE)
-x_2 = tf.constant(np.full((N_b, 1), x_max), dtype=DTYPE)
-y_2 = tf.random.uniform(shape=(N_b, 1), minval=y_min, maxval=y_max, dtype=DTYPE)
-t_2 = tf.random.uniform(shape=(N_b, 1), minval=t_min, maxval=t_max, dtype=DTYPE)
-X_2 = tf.concat([x_2, y_2, t_2], axis=1)
-# Third boundary
-x_3 = tf.random.uniform(shape=(N_b, 1), minval=x_min, maxval=x_max, dtype=DTYPE)
-# y_3 = tf.random.uniform(shape=(N_b, 1), minval=y_min, maxval=y_max, dtype=DTYPE)
-y_3 = tf.constant(np.full((N_b, 1), y_max), dtype=DTYPE)
-t_3 = tf.random.uniform(shape=(N_b, 1), minval=t_min, maxval=t_max, dtype=DTYPE)
-X_3 = tf.concat([x_3, y_3, t_3], axis=1)
-# Fourth boundary
-# x_4 = tf.random.uniform(shape=(N_b, 1), minval=x_min, maxval=x_max, dtype=DTYPE)
-x_4 = tf.constant(np.full((N_b, 1), x_min), dtype=DTYPE)
-y_4 = tf.random.uniform(shape=(N_b, 1), minval=y_min, maxval=y_max, dtype=DTYPE)
-t_4 = tf.random.uniform(shape=(N_b, 1), minval=t_min, maxval=t_max, dtype=DTYPE)
-X_4 = tf.concat([x_4, y_4, t_4], axis=1)
+X_1, X_2, X_3, X_4 = create_boundaries_data(N_b, x_min, x_max, y_min, y_max, t_min, t_max)
 # Initial condition
-N_0 = 512
-x_0 = tf.random.uniform(shape=(N_0, 1), minval=x_min, maxval=x_max, dtype=DTYPE)
-y_0 = tf.random.uniform(shape=(N_0, 1), minval=y_min, maxval=y_max, dtype=DTYPE)
-t_0 = tf.zeros(shape=(N_0, 1), dtype=DTYPE)
-X_0 = tf.concat([x_0, y_0, t_0], axis=1)
+X_0 = create_initial_data(N_0, x_min, x_max, y_min, y_max, t_min)
 
-# Run Model
-if load_model_dir is None:
-    model = init_model(num_hidden_layers=5, num_neurons_per_layer=100)
-else:
+# Create/load model
+if load_model_dir is None: # New model
+    model = init_model() #num_hidden_layers=5, num_neurons_per_layer=100)
+else: # Load model
     model = tf.keras.models.load_model(load_model_dir)
-model.summary()
+model.summary() # Show configuration
 
-# Optimizer
-# lr = 1e-2
-# wd = None
-# optimizer = tf.keras.optimizers.Adam(learning_rate=lr, weight_decay=wd)
+# Optimization. First using Adam, then L-BFGS #
+# Adam optimizer
+N_iter = 10000 # Number of iterations
+# Early stopping
+patience = 50 # Number of iterations to wait before stopping
+wait = 0 # Counter
+best_loss = float('inf') # Best loss
+best_model = model # Best model
+best_iter = 0 # Best iteration
+loss_history = np.zeros((N_iter, 4)) # Loss history
+lr = 1e-2 # Learning rate
+ds = 500 # Decay steps
+dr = 0.9 # Decay rate
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=1e-3,
-    decay_steps=500,
-    decay_rate=0.9
+    initial_learning_rate=lr,
+    decay_steps=ds,
+    decay_rate=dr
 )
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
-
-# Number of iterations
-N_iter = 10000
-# Early stopping
-patience = 50
-wait = 0
-best = float('inf')
-# Keep the best model
-best_model = model
-best_iter = 0
-# Loss history
-loss_history = np.zeros((N_iter, 4))
 # Initial time
 t0 = time.time()
 # Training loop
+print("Training with Adam...")
 for i in range(N_iter):
     loss, loss_m, loss_b, loss_i = train_step(model, optimizer, X_i, X_0, X_1, X_2, X_3, X_4)
+    # loss, loss_m, loss_b, loss_i = train_step_lbfgs(model, X_i, X_0, X_1, X_2, X_3, X_4)
     loss_history[i, :] = [loss.numpy(), loss_m.numpy(), loss_b.numpy(), loss_i.numpy()]
     # Loss log
     if i % 100 == 0:
         print(LOG_OUT.format(i, loss, loss_m, loss_b, loss_i))
     # Early stopping
     wait += 1
-    if loss < best:
-        best = loss
+    if loss < best_loss:
+        best_loss = loss
         best_model = model
         best_iter = i
         wait = 0
     if wait > patience:
         print('Early stopping at iteration {}'.format(i+1))
         break
-print("Best loss: {:2.4e} at iteration: {}".format(best, best_iter+1))
-loss_history = loss_history[:best_iter+1]
+# Best loss for adam
+print("Adam best loss: {:2.4e} at iteration: {}".format(best_loss, best_iter+1))
+loss_adam = loss_history[:best_iter+1]
+# Second part using L-BFGS. Based on piyueh's wrapper
+pi = 8 # Parallel iterations
+max_iter = 5000 # Max iterations
+print("Training with L-BFGS...")
+func = function_factory(best_model, compute_loss, X_i, X_0, X_1, X_2, X_3, X_4)
+# convert initial model parameters to a 1D tf.Tensor
+init_params = tf.dynamic_stitch(func.idx, best_model.trainable_variables)
+# train the model with L-BFGS solver
+results = tfp.optimizer.lbfgs_minimize(
+    value_and_gradients_function=func, 
+    initial_position=init_params, 
+    parallel_iterations=pi,
+    max_iterations=max_iter
+)
+# after training, the final optimized parameters are still in results.position
+# so we have to manually put them back to the model
+func.assign_new_model_parameters(results.position)
+loss_lbfgs = np.array(func.history)
+print("L-BFGS best loss: {:2.4e}".format(loss_lbfgs[-1, 0]))
 # Plot loss history
-loss_plot(loss_history, log=True)
+loss_adam_lbfgs(loss_adam, loss_lbfgs, log=True)
 # Total time
 print('\nComputation time: {} seconds\n'.format(round(time.time() - t0)))
 print('Model name: {}'.format(model_name))
 # Save model
 best_model.save("{}/{}.h5".format(MODEL_DIR, model_name))
 # Save loss history
-np.savetxt('{}/{}.txt'.format(MODEL_DIR, model_name), loss_history)
+np.savetxt('{}/{}_loss_adam.txt'.format(MODEL_DIR, model_name), loss_adam)
+np.savetxt('{}/{}_loss_lbfgs.txt'.format(MODEL_DIR, model_name), loss_lbfgs)
