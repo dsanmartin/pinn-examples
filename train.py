@@ -4,7 +4,7 @@ import time
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from plots import loss_adam_lbfgs
+from plots import loss_adam_lbfgs, plot3D
 from utils import function_factory
 from domain import create_boundaries_data, create_domain_data, create_initial_data
 
@@ -142,13 +142,13 @@ x_min, x_max = -5, 5
 y_min, y_max = -5, 5
 t_min, t_max = 0, 1
 # Number of data points
-N_i, N_b, N_0 = 1024, 512, 512 # Inside the domain, on the boundary and initial condition
+N_i, N_b, N_0 = 1024, 32, 32 # Inside the domain, on the boundary and initial condition
 # Data inside the domain
 X_i = create_domain_data(N_i, x_min, x_max, y_min, y_max, t_min, t_max)
 # Data on the boundary
-X_1, X_2, X_3, X_4 = create_boundaries_data(N_b, x_min, x_max, y_min, y_max, t_min, t_max)
+X_1, X_2, X_3, X_4 = create_boundaries_data(N_b, x_min, x_max, y_min, y_max, t_min, t_max, 'linspace')
 # Initial condition
-X_0 = create_initial_data(N_0, x_min, x_max, y_min, y_max, t_min)
+X_0 = create_initial_data(N_0, x_min, x_max, y_min, y_max, t_min, 'linspace')
 
 # Create/load model
 if load_model_dir is None: # New model
@@ -167,7 +167,7 @@ best_loss = float('inf') # Best loss
 best_model = model # Best model
 best_iter = 0 # Best iteration
 loss_history = np.zeros((N_iter, 4)) # Loss history
-lr = 1e-2 # Learning rate
+lr = 1e-4 # Learning rate
 ds = 500 # Decay steps
 dr = 0.9 # Decay rate
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
@@ -182,7 +182,6 @@ t0 = time.time()
 print("Training with Adam...")
 for i in range(N_iter):
     loss, loss_m, loss_b, loss_i = train_step(model, optimizer, X_i, X_0, X_1, X_2, X_3, X_4)
-    # loss, loss_m, loss_b, loss_i = train_step_lbfgs(model, X_i, X_0, X_1, X_2, X_3, X_4)
     loss_history[i, :] = [loss.numpy(), loss_m.numpy(), loss_b.numpy(), loss_i.numpy()]
     # Loss log
     if i % 100 == 0:
