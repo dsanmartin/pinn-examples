@@ -1,16 +1,26 @@
 import sys
+import pickle
 import numpy as np
 import tensorflow as tf
 from plots import plot2D_2
 
 # Model file path
-model_file_path = sys.argv[1]
+model_id = sys.argv[1]
+path = 'models/' + model_id + '/'
+model_file_path = path + 'model.h5'
+domain_file_path = path + 'domain.pkl'
 
 # Domain
+# Load domain from pickle file
+with open(domain_file_path, 'rb') as f:
+    domain = pickle.load(f)
+x_min, x_max = domain['x_min'], domain['x_max']
+y_min, y_max = domain['y_min'], domain['y_max']
+t_min, t_max = domain['t_min'], domain['t_max']
 Nx, Ny, Nt = 128, 128, 128
-x_min, x_max = -5, 5
-y_min, y_max = -5, 5
-t_min, t_max = 0, 1
+# x_min, x_max = -5, 5
+# y_min, y_max = -5, 5
+# t_min, t_max = 0, 1
 x = np.linspace(x_min, x_max, Nx)
 y = np.linspace(y_min, y_max, Ny)
 t = np.linspace(t_min, t_max, Nt)

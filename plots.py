@@ -36,6 +36,34 @@ def plot2D_2(x, y, z1, z2, tit1="", tit2=""):
     plt.tight_layout()
     plt.show()
 
+def streamplot(x, y, u, v, title=None):
+    # Graficar
+    plt.figure(figsize=(7, 6))
+    plt.streamplot(x, y, u, v)
+    if title is not None:
+        plt.title(title)
+    plt.xlabel(r'$x$')
+    plt.ylabel(r'$y$')
+    plt.show()
+
+def streamplot_2(x, y, u1, v1, u2, v2, title1="", title2=""):
+    fig, ax = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+    sp1 = np.sqrt(u1 ** 2 + v1 ** 2)
+    sp2 = np.sqrt(u2 ** 2 + v2 ** 2)
+    ax[0].contourf(x, y, sp1, cmap='viridis', alpha=0.5)
+    ax[0].streamplot(x, y, u1, v1, color='k', linewidth=.8)
+    ax[1].contourf(x, y, sp2, cmap='viridis', alpha=0.5)
+    ax[1].streamplot(x, y, u2, v2, color='k', linewidth=.8)
+    ax[0].set_xlabel(r'$x$')
+    ax[1].set_xlabel(r'$x$')
+    ax[0].set_ylabel(r'$y$')
+    ax[0].set_title(title1)
+    ax[1].set_title(title2)
+    ax[0].set_xlim([x.min(), x.max()])
+    ax[0].set_ylim([y.min(), y.max()])
+    ax[1].set_xlim([x.min(), x.max()])
+    plt.tight_layout()
+    plt.show()
 
 def loss_plot(loss_history, log=False):
     plt.figure(figsize=(7, 6))

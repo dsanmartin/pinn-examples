@@ -61,9 +61,18 @@ def create_boundaries_data(N_b, x_min, x_max, y_min, y_max, t_min, t_max, type='
     return X_1, X_2, X_3, X_4
 
 def create_domain_data(N_i, x_min, x_max, y_min, y_max, t_min, t_max, type='random'):
-    x = create_axis(N_i, [x_min, x_max], type)
-    y = create_axis(N_i, [y_min, y_max], type)
-    t = create_axis(N_i, [t_min, t_max], type)
+    if type == 'random':
+        x = create_axis(N_i ** 2, [x_min, x_max], type)
+        y = create_axis(N_i ** 2, [y_min, y_max], type)
+        t = create_axis(N_i ** 2, [t_min, t_max], type)
+    else:
+        x = np.linspace(x_min, x_max, N_i)
+        y = np.linspace(y_min, y_max, N_i)
+        t = np.linspace(t_min, t_max, N_i)
+        X, Y, T = np.meshgrid(x, y, t)
+        x = tf.constant(X.flatten(), shape=(N_i ** 3, 1), dtype=tf.float64)
+        y = tf.constant(Y.flatten(), shape=(N_i ** 3, 1), dtype=tf.float64)
+        t = tf.constant(T.flatten(), shape=(N_i ** 3, 1), dtype=tf.float64)
     X = tf.concat([x, y, t], axis=1)
     return X
 

@@ -1,11 +1,28 @@
-"""
-Based on work by: Pi-Yueh Chuang <pychuang@gwu.edu>
-URL: https://gist.github.com/piyueh/712ec7d4540489aad2dcfb80f9a54993#file-tf_keras_tfp_lbfgs-py
-"""
 import tensorflow as tf
 import numpy
 
-def function_factory(model, loss, X, X_0, X_1, X_2, X_3, X_4):
+# MLP definition
+def init_model(input_neurons=3, num_hidden_layers=3, num_neurons_per_layer=50, output_neurons=1, activation='tanh'):
+    # Neural network
+    model = tf.keras.Sequential()
+    # Input layer
+    model.add(tf.keras.Input(input_neurons, name='Input')) # x, t
+    # Hidden layers
+    for i in range(num_hidden_layers):
+        model.add(
+            tf.keras.layers.Dense(num_neurons_per_layer,
+            activation = tf.keras.activations.get(activation), 
+            kernel_initializer = 'glorot_normal',
+            name = 'Hidden_{}'.format(i+1)
+            )
+        )
+    # Output layer
+    model.add(tf.keras.layers.Dense(output_neurons, name='Output')) # u
+    return model
+
+# Based on work by: Pi-Yueh Chuang <pychuang@gwu.edu>
+# URL: https://gist.github.com/piyueh/712ec7d4540489aad2dcfb80f9a54993#file-tf_keras_tfp_lbfgs-py
+def function_factory(model, loss, X, y):
     """A factory to create a function required by tfp.optimizer.lbfgs_minimize.
 
     Args:
@@ -74,7 +91,8 @@ def function_factory(model, loss, X, X_0, X_1, X_2, X_3, X_4):
             assign_new_model_parameters(params_1d)
             # calculate the loss
             # loss_value = loss(model(train_x, training=True), train_y)
-            loss_value, loss_m, loss_b, loss_i = loss(model, X, X_0, X_1, X_2, X_3, X_4)
+            # loss_value, loss_m, loss_b, loss_i = loss(model, X, X_0, X_1, X_2, X_3, X_4)
+            loss_value, loss_m, loss_b, loss_i = loss(X, y)
 
         # calculate gradients and convert to 1D tf.Tensor
         grads = tape.gradient(loss_value, model.trainable_variables)
