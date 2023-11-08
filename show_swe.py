@@ -39,17 +39,15 @@ X_eval_2 = tf.constant(np.stack([X.flatten(), Y.flatten(), np.full_like(X.flatte
 # Evaluate model
 model_predict_1 = model(X_eval_1)#.numpy()
 model_predict_2 = model(X_eval_2)#numpy()
-u0, v0, p0 = model_predict_1[:, 0], model_predict_1[:, 1], model_predict_1[:, 2]
-u1, v1, p1 = model_predict_2[:, 0], model_predict_2[:, 1], model_predict_2[:, 2]
+h0, u0, v0 = model_predict_1[:, 0], model_predict_1[:, 1], model_predict_1[:, 2]
+h1, u1, v1 = model_predict_2[:, 0], model_predict_2[:, 1], model_predict_2[:, 2]
+h0 = h0.numpy().reshape(X.shape)
 u0 = u0.numpy().reshape(X.shape)
 v0 = v0.numpy().reshape(X.shape)
-p0 = p0.numpy().reshape(X.shape)
+h1 = h1.numpy().reshape(X.shape)
 u1 = u1.numpy().reshape(X.shape)
 v1 = v1.numpy().reshape(X.shape)
-p1 = p1.numpy().reshape(X.shape)
 
 # Plot
-# plot2D_2(x, y, u0, u1, r'$u(x, y, t={:2.4f})$'.format(t_min), r'$u(x, y, t={:2.4f})$'.format(t_max))
-# plot2D_2(x, y, v0, v1, r'$v(x, y, t={:2.4f})$'.format(t_min), r'$v(x, y, t={:2.4f})$'.format(t_max))
-# plot2D_2(x, y, p0, p1, r'$p(x, y, t={:2.4f})$'.format(t_min), r'$p(x, y, t={:2.4f})$'.format(t_max))
+plot2D_2(x, y, h0, h1, r'$h(x, y, t={:2.4f})$'.format(t_min), r'$h(x, y, t={:2.4f})$'.format(t_max))
 streamplot_2(x, y, u0, v0, u1, v1, r'$u(x, y, t={:2.4f})$'.format(t_min), r'$u(x, y, t={:2.4f})$'.format(t_max))

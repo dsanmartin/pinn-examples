@@ -1,9 +1,9 @@
 import tensorflow as tf
 from utils import init_model
 
-# PDE T_t = alpha * div(grad(T))
-def PDE(T, Tt, Txx, Tyy):
-    return [Tt - .25 * (Txx + Tyy)]
+# PDE T_t + u * grad(T) = alpha * div(grad(T))
+def PDE(T, Tt, Tx, Ty, Txx, Tyy):
+    return [Tt + 1 * Tx + 1 * Ty - .25 * (Txx + Tyy)]
 
 def get_derivatives(model, X):
     x, y, t = tf.split(X, 3, axis=1)
@@ -25,7 +25,7 @@ def get_derivatives(model, X):
 # Temperature initial condition
 T_A = 1
 sx = sy = 1
-x0, y0 = 0, 0
+x0, y0 = -2, -2
 def T0(x, y): # T0 = lambda x, y: T_A * tf.exp(- (x**2 / sx**2 + y**2 / sy**2))
     return T_A * tf.exp(- ((x - x0) ** 2 / sx ** 2 + (y - y0) ** 2 / sy ** 2))
 

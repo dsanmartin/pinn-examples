@@ -4,6 +4,7 @@ import tensorflow as tf
 from pinn import PINN
 from domain import create_boundaries_data, create_domain_data, create_initial_data
 from example import model, PDE, get_derivatives, initial_conditions, boundary_conditions, domain, adam_params, lbfgs_params
+from plots import plot3D, plot2D
 
 def main():
     # Model name using date and time
