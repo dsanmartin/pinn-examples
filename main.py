@@ -12,13 +12,13 @@ def main():
     model_path = sys.argv[1] if len(sys.argv) > 1 else None # Load model from directory
     # Create data
     # Number of data points (per axis)
-    N_i, N_b, N_0 = 16, 32, 32 # Inside the domain, on the boundary and initial condition
+    N_i, N_b, N_0 = 64, 64, 64 # Inside the domain, on the boundary and initial condition
     # Data inside the domain
     x_min, x_max = domain['x_min'], domain['x_max']
     y_min, y_max = domain['y_min'], domain['y_max']
     t_min, t_max = domain['t_min'], domain['t_max']
-    eps = 1e-3
-    X_m = create_domain_data(N_i, x_min+eps, x_max-eps, y_min+eps, y_max-eps, t_min+eps, t_max, 'linspace') # N_i ** 3 points
+    eps = 0
+    X_m = create_domain_data(N_i, x_min+eps, x_max-eps, y_min+eps, y_max-eps, t_min+eps, t_max, 'random') # N_i ** 3 points
     # Data on the boundary
     X_b = create_boundaries_data(N_b, x_min, x_max, y_min, y_max, t_min, t_max, 'linspace') # N_b ** 2 points per boundary
     # Initial condition

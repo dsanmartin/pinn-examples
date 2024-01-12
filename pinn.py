@@ -166,7 +166,6 @@ class PINN:
         print("L-BFGS best loss: {:2.4e}".format(loss_lbfgs[-1, 0]))
         # Plot loss history
         # loss_adam_lbfgs(loss_adam, loss_lbfgs, log=True)
-        loss_plot(self.history, log=True)
         return None
 
     def training(self, adam_params, lbfgs_params, X, y):
@@ -179,6 +178,8 @@ class PINN:
             self.lbfgs_training(lbfgs_params, X, y)
         final_time = time.time()
         print('\nComputation time: {} seconds\n'.format(round(final_time - initial_time)))
+        # Plot loss history
+        loss_plot(self.history, log=True)
         return None
     
     def save(self, path, domain):
